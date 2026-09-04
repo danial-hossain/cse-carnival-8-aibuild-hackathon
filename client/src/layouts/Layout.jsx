@@ -21,7 +21,6 @@ import {
 
 const navigation = [
   { name: 'Overview', href: '/', icon: LayoutDashboard, color: 'text-indigo-500' },
-  { name: 'Courses', href: '/courses', icon: BookOpen, color: 'text-cyan-500' },
   { name: 'Schedules', href: '/schedules', icon: CalendarDays, color: 'text-emerald-500' },
   { name: 'Rooms', href: '/rooms', icon: DoorClosed, color: 'text-amber-500' },
   { name: 'Events', href: '/events', icon: Sparkles, color: 'text-fuchsia-500' },
