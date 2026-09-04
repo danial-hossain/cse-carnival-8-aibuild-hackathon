@@ -72,6 +72,13 @@ export const courseService = {
   getTeachers: () => api.get('/courses/teachers').then(res => res.data),
 };
 
+export const notificationService = {
+  getAll: () => api.get('/notifications').then(res => res.data),
+  markAsRead: (id) => api.put(`/notifications/${id}/read`).then(res => res.data),
+  markAllAsRead: () => api.post('/notifications/mark-all-read').then(res => res.data),
+  delete: (id) => api.delete(`/notifications/${id}`).then(res => res.data),
+};
+
 export const agentService = {
   chat: (message, history = []) => api.post('/agent/chat', { message, history }).then(res => res.data),
 };

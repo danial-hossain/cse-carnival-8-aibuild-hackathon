@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { notificationService } from '../services/api';
 import { 
   LayoutDashboard, 
   BookOpen,
@@ -16,7 +17,13 @@ import {
   LogOut,
   Shield,
   UserCheck,
-  Zap
+  Zap,
+  Bell,
+  CheckCheck,
+  Clock,
+  Trash2,
+  ExternalLink,
+  ChevronRight
 } from 'lucide-react';
 
 const navigation = [
@@ -31,9 +38,81 @@ const navigation = [
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
+  const [loadingNotifs, setLoadingNotifs] = useState(false);
+  const dropdownRef = useRef(null);
+
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, isAdmin, isTeacher, isStudent } = useAuth();
+
+  const fetchNotifications = async () => {
+    if (!user) return;
+    try {
+      const res = await notificationService.getAll();
+      const notifs = res.data.data || res.data || [];
+      setNotifications(notifs);
+      const unread = notifs.filter(n => !n.is_read).length;
+      setUnreadCount(unread);
+    } catch (err) {
+      console.error('Failed to load notifications', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 10000); // 10s poll
+    return () => clearInterval(interval);
+  }, [user]);
+
+  // Click outside to close notification dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setNotifDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleMarkAsRead = async (id, link) => {
+    try {
+      await notificationService.markAsRead(id);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      if (link) {
+        setNotifDropdownOpen(false);
+        navigate(link);
+      }
+    } catch (err) {
+      console.error('Failed to mark read', err);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await notificationService.markAllAsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.error('Failed to mark all read', err);
+    }
+  };
+
+  const handleDeleteNotif = async (e, id) => {
+    e.stopPropagation();
+    try {
+      await notificationService.delete(id);
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      const updated = notifications.filter(n => n.id !== id);
+      setUnreadCount(updated.filter(n => !n.is_read).length);
+    } catch (err) {
+      console.error('Failed to delete notification', err);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -43,6 +122,15 @@ export default function Layout() {
   const getInitials = (name) => {
     if (!name) return 'U';
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  };
+
+  const formatTimeAgo = (dateStr) => {
+    if (!dateStr) return 'Just now';
+    const diff = Math.floor((new Date() - new Date(dateStr)) / 1000);
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
   };
 
   return (
@@ -59,12 +147,28 @@ export default function Layout() {
           </div>
           <span className="font-extrabold text-lg tracking-tight bg-linear-to-r from-indigo-600 to-cyan-600 bg-clip-text text-transparent">CampusOS</span>
         </div>
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200 transition cursor-pointer"
-        >
-          {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+        
+        <div className="flex items-center gap-2">
+          {/* Mobile Bell */}
+          <button
+            onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}
+            className="relative p-2 rounded-xl bg-slate-100 text-slate-600 hover:text-indigo-600 transition cursor-pointer"
+          >
+            <Bell className="w-5 h-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-extrabold text-white animate-pulse">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200 transition cursor-pointer"
+          >
+            {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
       </header>
 
       {/* Sidebar Navigation */}
@@ -186,12 +290,122 @@ export default function Layout() {
             <div className="text-xs px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 font-bold shadow-2xs">
               Simulated Date: <span className="font-black text-indigo-600">Sep 4, 2026</span>
             </div>
+            
             <div className={`text-xs px-3.5 py-1.5 rounded-xl font-extrabold uppercase tracking-wider flex items-center gap-1.5 shadow-2xs ${
               isAdmin ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : isTeacher ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
             }`}>
               {isAdmin ? <Shield className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
               <span>{user?.role} Mode</span>
             </div>
+
+            {/* Real-time Notification Center Bell Dropdown */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}
+                className="relative p-2.5 rounded-xl bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 border border-slate-200/80 transition shadow-2xs flex items-center justify-center cursor-pointer group"
+                title="Notifications"
+              >
+                <Bell className="w-4.5 h-4.5 transition-transform group-hover:rotate-12" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-black text-white shadow-md shadow-rose-500/30 animate-bounce">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Notification Dropdown Box */}
+              {notifDropdownOpen && (
+                <div className="absolute right-0 mt-3 w-80 md:w-96 bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl shadow-2xl z-50 overflow-hidden animate-scale-in">
+                  <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-linear-to-r from-slate-50 to-indigo-50/30">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-xs">
+                        <Bell className="w-4 h-4" />
+                      </div>
+                      <span className="font-extrabold text-sm text-slate-900">Campus Alerts</span>
+                      {unreadCount > 0 && (
+                        <span className="px-2 py-0.5 text-[10px] font-extrabold bg-rose-100 text-rose-700 rounded-full">
+                          {unreadCount} new
+                        </span>
+                      )}
+                    </div>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={handleMarkAllRead}
+                        className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 hover:underline cursor-pointer"
+                      >
+                        <CheckCheck className="w-3.5 h-3.5" />
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-96 overflow-y-auto divide-y divide-slate-100">
+                    {notifications.length === 0 ? (
+                      <div className="py-8 text-center text-slate-400">
+                        <Bell className="w-8 h-8 mx-auto mb-2 opacity-30 animate-pulse" />
+                        <p className="text-xs font-bold">No notifications yet</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">All updates across student, teacher & admin appear here.</p>
+                      </div>
+                    ) : (
+                      notifications.map((notif) => (
+                        <div
+                          key={notif.id}
+                          onClick={() => handleMarkAsRead(notif.id, notif.link)}
+                          className={`p-3.5 hover:bg-slate-50/90 transition flex items-start gap-3 cursor-pointer group relative ${
+                            !notif.is_read ? 'bg-indigo-50/40' : ''
+                          }`}
+                        >
+                          <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${
+                            !notif.is_read ? 'bg-indigo-600 animate-ping' : 'bg-transparent'
+                          }`} />
+                          
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-700 uppercase tracking-wider">
+                                {notif.actor_role || 'System'}
+                              </span>
+                              <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                                <Clock className="w-2.5 h-2.5" />
+                                {formatTimeAgo(notif.created_at)}
+                              </span>
+                            </div>
+
+                            <p className={`text-xs mt-1 leading-snug ${!notif.is_read ? 'font-extrabold text-slate-900' : 'font-semibold text-slate-700'}`}>
+                              {notif.title}
+                            </p>
+                            <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">
+                              {notif.message}
+                            </p>
+
+                            {notif.link && (
+                              <div className="mt-1.5 flex items-center gap-1 text-[10px] font-bold text-indigo-600 group-hover:translate-x-1 transition-transform">
+                                <span>View details</span>
+                                <ChevronRight className="w-3 h-3" />
+                              </div>
+                            )}
+                          </div>
+
+                          <button
+                            onClick={(e) => handleDeleteNotif(e, notif.id)}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-500 transition cursor-pointer"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="p-2.5 bg-slate-50 border-t border-slate-100 text-center">
+                    <span className="text-[10px] text-slate-400 font-bold">
+                      Real-time cross-role sync active
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <NavLink
               to="/assistant"
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-linear-to-r from-indigo-600 via-indigo-500 to-cyan-500 hover:from-indigo-700 hover:to-cyan-600 text-white text-xs font-extrabold transition-all shadow-md shadow-indigo-500/25 hover:scale-105 active:scale-95 cursor-pointer"

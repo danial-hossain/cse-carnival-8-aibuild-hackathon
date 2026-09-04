@@ -114,6 +114,17 @@ class AssignmentController extends Controller
         }
 
         $assignment = Assignment::create($validated);
+
+        // Notify Students about new assignment
+        \App\Models\Notification::createNotification(
+            'student',
+            "New Assignment: {$assignment->course} - {$assignment->title}",
+            "{$user->name} posted a new coursework deadline due on {$assignment->deadline}.",
+            $user,
+            'create',
+            '/assignments'
+        );
+
         return response()->json($assignment, 201);
     }
 
@@ -153,6 +164,17 @@ class AssignmentController extends Controller
         ]);
 
         $assignment->update($validated);
+
+        // Notify students about updated assignment / deadline extension
+        \App\Models\Notification::createNotification(
+            'student',
+            "Assignment Updated: {$assignment->course} - {$assignment->title}",
+            "{$user->name} updated the deadline or details for {$assignment->title}.",
+            $user,
+            'update',
+            '/assignments'
+        );
+
         return response()->json($assignment);
     }
 
@@ -179,7 +201,19 @@ class AssignmentController extends Controller
             }
         }
 
+        $title = $assignment->title;
+        $course = $assignment->course;
         $assignment->delete();
+
+        \App\Models\Notification::createNotification(
+            'student',
+            "Assignment Removed: {$course}",
+            "{$user->name} removed the assignment '{$title}'.",
+            $user,
+            'delete',
+            '/assignments'
+        );
+
         return response()->json(['message' => 'Assignment deleted successfully']);
     }
 }

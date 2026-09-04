@@ -68,6 +68,18 @@ class AnnouncementController extends Controller
         }
 
         $announcement = Announcement::create($validated);
+
+        // Notify Students & Teachers about new Announcement
+        $targetAudience = $user->role === 'admin' ? 'all' : ($user->role === 'teacher' ? 'student' : 'all');
+        \App\Models\Notification::createNotification(
+            $targetAudience,
+            "New Announcement: {$announcement->title}",
+            "{$user->name} posted a new {$announcement->priority}-priority announcement.",
+            $user,
+            'create',
+            '/announcements'
+        );
+
         return response()->json($announcement, 201);
     }
 
@@ -100,6 +112,17 @@ class AnnouncementController extends Controller
         ]);
 
         $announcement->update($validated);
+
+        // Notify Students & Teachers about updated announcement
+        \App\Models\Notification::createNotification(
+            'all',
+            "Updated Notice: {$announcement->title}",
+            "{$user->name} updated the notice: {$announcement->title}",
+            $user,
+            'update',
+            '/announcements'
+        );
+
         return response()->json($announcement);
     }
 
@@ -121,7 +144,19 @@ class AnnouncementController extends Controller
             ], 403);
         }
 
+        $title = $announcement->title;
         $announcement->delete();
+
+        // Notify role users about notice cancellation
+        \App\Models\Notification::createNotification(
+            'all',
+            "Notice Removed: {$title}",
+            "{$user->name} removed the announcement '{$title}'.",
+            $user,
+            'delete',
+            '/announcements'
+        );
+
         return response()->json(['message' => 'Announcement deleted successfully']);
     }
 }

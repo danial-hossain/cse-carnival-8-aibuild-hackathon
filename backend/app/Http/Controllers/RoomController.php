@@ -163,6 +163,17 @@ class RoomController extends Controller
         $room->bookings = $bookings;
         $room->save();
 
+        $user = $request->user();
+        // Notify Teachers and Admin about room reservation
+        \App\Models\Notification::createNotification(
+            'all',
+            "Room Reserved: {$room->room_number}",
+            "{$validated['booked_by']} reserved Room {$room->room_number} on {$validated['date']} ({$validated['start_time']} - {$validated['end_time']}) for '{$validated['purpose']}'.",
+            $user,
+            'create',
+            '/rooms'
+        );
+
         return response()->json([
             'message' => "Successfully booked room {$room->room_number}",
             'booking' => $newBooking,
@@ -170,7 +181,7 @@ class RoomController extends Controller
         ], 201);
     }
 
-    public function cancelBooking(string $id, string $bookingId): JsonResponse
+    public function cancelBooking(Request $request, string $id, string $bookingId): JsonResponse
     {
         $room = Room::where('id', $id)->orWhere('room_number', $id)->first();
         if (!$room) {
@@ -194,6 +205,16 @@ class RoomController extends Controller
 
         $room->bookings = $updated;
         $room->save();
+
+        $user = $request->user();
+        \App\Models\Notification::createNotification(
+            'all',
+            "Booking Cancelled: Room {$room->room_number}",
+            "Reservation for Room {$room->room_number} was cancelled.",
+            $user,
+            'delete',
+            '/rooms'
+        );
 
         return response()->json([
             'message' => "Booking cancelled successfully",

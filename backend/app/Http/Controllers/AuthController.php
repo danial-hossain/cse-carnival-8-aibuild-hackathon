@@ -31,6 +31,34 @@ class AuthController extends Controller
         // Revoke previous tokens if any, or create a new token
         $token = $user->createToken('campus_os_auth_token', [$user->role])->plainTextToken;
 
+        // Dispatch Role-based Login Notification
+        // When Student or Teacher logs in, notify Admin & relevant faculties
+        if ($user->role === 'student') {
+            \App\Models\Notification::createNotification(
+                'admin',
+                'Student Logged In',
+                "Student {$user->name} ({$user->email}) just logged into CampusOS.",
+                $user,
+                'login'
+            );
+        } elseif ($user->role === 'teacher') {
+            \App\Models\Notification::createNotification(
+                'admin',
+                'Faculty Member Logged In',
+                "Instructor {$user->name} ({$user->email}) is now active on CampusOS.",
+                $user,
+                'login'
+            );
+        } elseif ($user->role === 'admin') {
+            \App\Models\Notification::createNotification(
+                'teacher',
+                'Administrator Active',
+                "Campus Administrator {$user->name} is active on the system.",
+                $user,
+                'login'
+            );
+        }
+
         return response()->json([
             'message' => 'Login successful',
             'token' => $token,
@@ -63,6 +91,15 @@ class AuthController extends Controller
         ]);
 
         $token = $user->createToken('campus_os_auth_token', [$user->role])->plainTextToken;
+
+        // Notify Admin and Teachers about new student registration
+        \App\Models\Notification::createNotification(
+            'admin',
+            'New Student Registration',
+            "{$user->name} ({$user->email}) has registered as a student on CampusOS.",
+            $user,
+            'create'
+        );
 
         return response()->json([
             'message' => 'Registration successful',

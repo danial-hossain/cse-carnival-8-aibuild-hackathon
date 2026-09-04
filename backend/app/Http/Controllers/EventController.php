@@ -88,6 +88,17 @@ class EventController extends Controller
         }
 
         $event = Event::create($validated);
+
+        // Notify Students about new Campus Event
+        \App\Models\Notification::createNotification(
+            'all',
+            "New Event: {$event->name}",
+            "{$user->name} announced '{$event->name}' on {$event->date} at {$event->venue}.",
+            $user,
+            'create',
+            '/events'
+        );
+
         return response()->json($event, 201);
     }
 
@@ -125,6 +136,17 @@ class EventController extends Controller
         ]);
 
         $event->update($validated);
+
+        // Notify about updated event schedule / venue
+        \App\Models\Notification::createNotification(
+            'all',
+            "Event Updated: {$event->name}",
+            "{$user->name} updated the event details for {$event->name}.",
+            $user,
+            'update',
+            '/events'
+        );
+
         return response()->json($event);
     }
 
@@ -146,12 +168,24 @@ class EventController extends Controller
             ], 403);
         }
 
+        $eventName = $event->name;
         $event->delete();
+
+        \App\Models\Notification::createNotification(
+            'all',
+            "Event Cancelled: {$eventName}",
+            "{$user->name} removed or cancelled the event '{$eventName}'.",
+            $user,
+            'delete',
+            '/events'
+        );
+
         return response()->json(['message' => 'Event deleted successfully']);
     }
 
     public function register(Request $request, string $id): JsonResponse
     {
+        $user = $request->user();
         $event = Event::find($id);
         if (!$event) {
             return response()->json(['message' => 'Event not found'], 404);
@@ -191,6 +225,16 @@ class EventController extends Controller
         }
         $event->save();
 
+        // Notify Admin & Event Organizer about student registration
+        \App\Models\Notification::createNotification(
+            'admin',
+            "New Event Registration: {$event->name}",
+            "Student {$validated['name']} registered for '{$event->name}'. Current: {$event->registered}/{$event->capacity}",
+            $user,
+            'create',
+            '/events'
+        );
+
         return response()->json([
             'message' => "Successfully registered for {$event->name}",
             'event' => $event,
@@ -199,6 +243,7 @@ class EventController extends Controller
 
     public function cancelRegistration(Request $request, string $id): JsonResponse
     {
+        $user = $request->user();
         $event = Event::find($id);
         if (!$event) {
             return response()->json(['message' => 'Event not found'], 404);

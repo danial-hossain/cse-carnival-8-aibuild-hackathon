@@ -7,6 +7,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CourseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\ScheduleController;
 use Illuminate\Support\Facades\Route;
@@ -55,6 +56,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // Assignments (Read for all)
     Route::get('/assignments', [AssignmentController::class, 'index']);
     Route::get('/assignments/{id}', [AssignmentController::class, 'show']);
+
+    // Notifications (Read, mark-read, mark-all-read)
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
 
     // AI Assistant Chat & Action Tool Execution (role-aware)
     Route::post('/agent/chat', [AgentController::class, 'chat']);

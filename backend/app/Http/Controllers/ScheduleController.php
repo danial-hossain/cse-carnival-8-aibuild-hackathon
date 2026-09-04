@@ -105,6 +105,17 @@ class ScheduleController extends Controller
         }
 
         $schedule = Schedule::create($validated);
+
+        // Notify Students about new Class Schedule entry
+        \App\Models\Notification::createNotification(
+            'student',
+            "New Class Routine: {$schedule->course}",
+            "{$schedule->course} scheduled on {$schedule->day} ({$schedule->start_time} - {$schedule->end_time}) in Room {$schedule->room}.",
+            $user,
+            'create',
+            '/schedules'
+        );
+
         return response()->json($schedule, 201);
     }
 
@@ -163,6 +174,17 @@ class ScheduleController extends Controller
         }
 
         $schedule->update($validated);
+
+        // Notify Students about class reschedule or room shift
+        \App\Models\Notification::createNotification(
+            'student',
+            "Class Rescheduled: {$schedule->course}",
+            "{$schedule->course} moved to Room {$schedule->room} on {$schedule->day} ({$schedule->start_time} - {$schedule->end_time}).",
+            $user,
+            'update',
+            '/schedules'
+        );
+
         return response()->json($schedule);
     }
 
@@ -187,7 +209,18 @@ class ScheduleController extends Controller
             }
         }
 
+        $courseCode = $schedule->course;
         $schedule->delete();
+
+        \App\Models\Notification::createNotification(
+            'student',
+            "Class Cancelled: {$courseCode}",
+            "{$user->name} cancelled the scheduled class for {$courseCode}.",
+            $user,
+            'delete',
+            '/schedules'
+        );
+
         return response()->json(['message' => 'Schedule deleted successfully']);
     }
 }
