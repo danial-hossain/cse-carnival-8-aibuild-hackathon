@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 export default function Events() {
-  const { isAdmin } = useAuth();
+  const { user, isAdmin, isTeacher, isStudent } = useAuth();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -46,8 +46,8 @@ export default function Events() {
   const [isRegModalOpen, setIsRegModalOpen] = useState(false);
   const [selectedEventForReg, setSelectedEventForReg] = useState(null);
   const [regForm, setRegForm] = useState({
-    student_id: '20-40532',
-    name: 'Sakibul Hassan'
+    student_id: user?.student_id || user?.id?.toString() || '20-40532',
+    name: user?.name || 'Sakibul Hassan'
   });
 
   const showToast = (message, type = 'success') => {
@@ -307,18 +307,37 @@ export default function Events() {
                     ></div>
                   </div>
 
-                  <button
-                    onClick={() => handleOpenRegisterModal(evt)}
-                    disabled={isFull}
-                    className={`w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition ${
-                      isFull
-                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                        : 'bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-600 hover:text-white'
-                    }`}
-                  >
-                    <UserCheck className="w-3.5 h-3.5" />
-                    {isFull ? 'Registration Full' : 'Register for Event'}
-                  </button>
+                  {isStudent ? (
+                    <button
+                      onClick={() => handleOpenRegisterModal(evt)}
+                      disabled={isFull}
+                      className={`w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                        isFull
+                          ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                          : 'bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-600 hover:text-white'
+                      }`}
+                    >
+                      <UserCheck className="w-3.5 h-3.5" />
+                      {isFull ? 'Registration Full' : 'Register for Event'}
+                    </button>
+                  ) : isAdmin ? (
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-xs">
+                      <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-indigo-600" />
+                        Admin Managed
+                      </span>
+                      <button
+                        onClick={() => handleOpenEditModal(evt)}
+                        className="text-[11px] font-extrabold text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer"
+                      >
+                        Edit Details
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-center py-1.5 text-[11px] font-semibold text-slate-500 bg-slate-50 rounded-xl border border-slate-200/60">
+                      {isFull ? 'Event Registration Full' : 'Open for Students'}
+                    </div>
+                  )}
                 </div>
               </div>
             );
