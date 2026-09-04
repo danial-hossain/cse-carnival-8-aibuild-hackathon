@@ -4,99 +4,172 @@ An intelligent university platform powered by an AI agent that understands and a
 
 ---
 
-## The Challenge
+## 1. Project Overview
 
-Students struggle daily with scattered campus information — class changes buried in group chats, deadlines forgotten until the last minute, no easy way to know what's happening on campus right now.
+**CampusOS** is a full-stack campus intelligence operating system tailored for universities (modeled after AUST). It integrates scattered campus services into a cohesive, role-aware, and real-time dashboard featuring:
 
-Your job: build **CampusOS** — a two-part app with a data dashboard and an AI agent that always reads live data.
-
-Read the full problem statement → [`PROBLEM_STATEMENT.md`](./PROBLEM_STATEMENT.md)
+- 📚 **Courses & Curriculum**:
+  - Live university course catalog with section capacity gauges.
+  - **Quick Join by Course ID / Code** (e.g. `CSE 321`, `CRS-CSE321`) with instant validation and credit calculation.
+  - Role-based student enrollments, drops, teacher roster views, and admin course creation.
+- 📅 **Schedules**: Weekly timetable grid, room mappings, time slots, and instructor allocations.
+- 🏢 **Rooms**: Real-time classroom and laboratory status, equipment filters (projectors, AC, sound systems), capacity tracking, and booking clash detection.
+- 🎉 **Events**: Hackathons, workshops, guest seminars with live capacity counting and one-click student registration.
+- 📢 **Announcements**: Broadcast notices categorized by priority (Urgent, High, Normal) with automatic active/expired filtering.
+- 📝 **Assignments**: Course homework, submission deadlines, and student progress tracking.
+- 🤖 **Autonomous AI Agent**: Tool-calling AI connected directly to the live MySQL database capable of executing real actions (booking rooms, registering events, querying schedules, filtering courses) based on real-time database state.
 
 ---
 
-## Repository Structure
+## 2. Architecture & Tech Stack
+
+- **Backend**: Laravel 12 (PHP 8.2+), Laravel Sanctum Authentication, Eloquent ORM, REST API
+- **Database**: MySQL 8.x (persistent storage across sessions with foreign key integrity)
+- **Frontend**: React 19, Vite, Tailwind CSS v4, Lucide Icons, Axios, React Router v7
+- **AI Agent Engine**: Tool-calling AI Architecture supporting OpenAI / Groq / Gemini with a built-in deterministic fallback for 100% offline evaluation reliability.
+- **Authentication & RBAC**: Multi-role support (`student`, `teacher`, `admin`) with protected API endpoints and custom permissions.
+
+---
+
+## 3. End-to-End System Workflow
 
 ```
-campusos-hackathon/
-│
-├── README.md                    ← You are here
-├── PROBLEM_STATEMENT.md         ← Full problem statement + scoring
-├── SUBMISSION.md                ← How and where to submit
-│
-├── data/                        ← Seed data (load these into your backend)
-│   ├── schedules.json
-│   ├── rooms.json
-│   ├── events.json
-│   ├── announcements.json
-│   └── assignments.json
-│
-├── schema/
-│   └── schema.md                ← Field names, types, and constraints for all 5 systems
-│
-└── sample_queries/
-    └── sample_queries.md        ← Queries we will use when judging your agent
+[ Student / Teacher / Admin ]
+             │
+             ▼
+    [ Sanctum Auth ]
+             │
+             ▼
+    [ CampusOS Dashboard ]
+   ┌─────────┼─────────┬─────────┬─────────┐
+   ▼         ▼         ▼         ▼         ▼
+Courses  Schedules   Rooms    Events  AI Agent
+   │         │         │         │         │
+   └─────────┴────┬────┴─────────┴─────────┘
+                  ▼
+         [( MySQL Database )]
 ```
 
----
-
-## How to Participate
-
-### 1. Fork the repository
-
-Click **Fork** in the top-right corner of this repo's GitHub page. This creates your own copy under your GitHub account, where you'll build your solution.
-
-### 2. Clone your fork
-
-```bash
-git clone https://github.com/YOUR_USERNAME/campusos-hackathon.git
-cd campusos-hackathon
-```
-
-### 3. Build your solution inside your fork
-
-> Your solution lives in your fork — do not open a pull request to this repo.
-
-### 4. Making your fork private
-
-By default, a fork is public. If you want to keep your work hidden from other participants while you build:
-
-1. Go to your fork on GitHub
-2. Open **Settings** (top of the repo page)
-3. Scroll to the **Danger Zone** at the bottom
-4. Click **Change repository visibility** → **Make private**
-5. Confirm by typing the repository name
-
-> **You may keep your fork private during the hackathon period, but it must be switched back to public by 8:30 PM on the submission deadline.** Repositories still private after that time will not be judged. To make it public again, repeat the steps above and choose **Make public** instead.
-
-### 5. Submit
-
-Submit your fork's public URL via the instructions in [`SUBMISSION.md`](./SUBMISSION.md).
+### Core User Journeys:
+1. **Student Registration & Course Enrollment**:
+   - Students register and log in to access their personalized dashboard.
+   - Navigate to **Courses**, browse catalog or click **Join by Course ID** to enroll using course codes (e.g., `CSE 321`).
+   - The system validates capacity in real-time and increments enrolled counts.
+2. **Teacher & Faculty Management**:
+   - Teachers view assigned courses, track student rosters, create assignments, and schedule class slots.
+3. **AI Campus Senior Agent**:
+   - Ask natural language questions like *"What classes do I have tomorrow?"* or *"Book Room 7A02 tomorrow at 3 PM"*.
+   - The AI agent dynamically invokes backend tools and executes database operations.
 
 ---
 
-## Quick Links
+## 4. Setup & Installation Instructions
 
-| Resource | Link |
-|----------|------|
-| Full problem statement | [`PROBLEM_STATEMENT.md`](./PROBLEM_STATEMENT.md) |
-| Data schema | [`schema/schema.md`](./schema/schema.md) |
-| Sample agent queries | [`sample_queries/sample_queries.md`](./sample_queries/sample_queries.md) |
-| Submission guide | [`SUBMISSION.md`](./SUBMISSION.md) |
-
----
-
-## Seed Data Overview
-
-| File | Records | What It Contains |
-|------|---------|-----------------|
-| `schedules.json` | 24 | Class timetable — course, day, time, room, instructor |
-| `rooms.json` | 20 | Rooms 7A01–7A07, 7B01–7B08, 7C01–7C05 with equipment and bookings |
-| `events.json` | 7 | Campus events with registration lists |
-| `announcements.json` | 8 | Notices with priority levels and expiry dates |
-| `assignments.json` | 8 | Course assignments with deadlines and submission status |
-
-> **Important:** These JSON files are only the starting/seed data — not the database itself. Load them into a real backend (a database, or at minimum a backend service with persistent storage) on app startup. Your dashboard and AI agent must both read from and write to that backend, not the static JSON files directly. If you add, edit, or delete a record, the change must be saved in your backend and still be there after a reload — the JSON files in this repo will not update. The agent is also expected to always query the current backend state, not a cached or hardcoded copy of the seed data.
+### Prerequisites
+- PHP >= 8.2 with `pdo_mysql`, `fileinfo`, `mbstring`, `openssl` enabled
+- Composer
+- MySQL (e.g., XAMPP or native MySQL on `127.0.0.1:3306`)
+- Node.js >= 18.x & npm
 
 ---
 
-Good luck. Build something that actually works.
+### Step 1: Backend Setup (Laravel + MySQL)
+
+1. Open terminal and go to `backend`:
+   ```bash
+   cd backend
+   ```
+
+2. Copy environment file:
+   ```bash
+   cp .env.example .env
+   ```
+   *(Verify your database credentials in `.env`: `DB_DATABASE=campus_os`, `DB_USERNAME=root`, `DB_PASSWORD=`)*
+
+3. Install dependencies:
+   ```bash
+   composer install
+   ```
+
+4. Generate application key:
+   ```bash
+   php artisan key:generate
+   ```
+
+5. Run migrations & seed data:
+   ```bash
+   php artisan migrate:fresh --seed
+   ```
+
+6. Start Laravel backend:
+   ```bash
+   php artisan serve --port=8000
+   ```
+   *Backend will run at: `http://localhost:8000`*
+
+---
+
+### Step 2: Frontend Setup (React + Vite)
+
+1. Open a new terminal and go to `client`:
+   ```bash
+   cd client
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Configure `.env` (optional, default `http://localhost:8000/api`):
+   ```env
+   VITE_API_URL=http://localhost:8000/api
+   ```
+
+4. Start development server:
+   ```bash
+   npm run dev
+   ```
+   *Frontend dashboard will run at: `http://localhost:5173`*
+
+---
+
+## 5. Seeded Test Accounts
+
+| Role | Email | Password |
+|---|---|---|
+| **Student** | `student@campusos.com` | `password` |
+| **Teacher** | `teacher@campusos.com` | `password` |
+| **Admin** | `admin@campusos.com` | `password` |
+
+---
+
+## 6. Environment Configuration
+
+### Backend (`backend/.env`)
+| Variable | Description | Default |
+|---|---|---|
+| `DB_CONNECTION` | Database Driver | `mysql` |
+| `DB_HOST` | Database Host | `127.0.0.1` |
+| `DB_PORT` | Database Port | `3306` |
+| `DB_DATABASE` | Database Name | `campus_os` |
+| `DB_USERNAME` | Database User | `root` |
+| `DB_PASSWORD` | Database Password | *(empty)* |
+| `OPENAI_API_KEY` | Optional OpenAI API Key | *(optional)* |
+| `GROQ_API_KEY` | Optional Groq API Key | *(optional)* |
+
+### Frontend (`client/.env`)
+| Variable | Description | Default |
+|---|---|---|
+| `VITE_API_URL` | Backend REST API Endpoint | `http://localhost:8000/api` |
+
+---
+
+## 7. AI Agent Queries & Capabilities
+
+The autonomous AI Assistant is accessible via `/assistant` or the floating AI prompt:
+- **Course & Credits**: *"Which courses am I enrolled in and how many credits do I have?"*
+- **Schedules & Classes**: *"When is my next class?"* or *"What is my schedule for Monday?"*
+- **Room Availability & Bookings**: *"Find me a lab with a projector and at least 30 capacity"* / *"Book Room 7A02 tomorrow from 3 PM to 5 PM"*
+- **Event Registrations**: *"Register me for the Intra-University Hackathon"*
+- **Announcements & Deadlines**: *"Show all high-priority announcements and upcoming assignment deadlines"*
